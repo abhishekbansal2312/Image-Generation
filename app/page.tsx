@@ -1,188 +1,159 @@
-// File: app/page.js
+// pages/agent-ai-demo.js
 "use client";
+import { useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
 
-import { useState, useEffect } from "react";
+export default function AgentAIDemo() {
+  const [loading, setLoading] = useState(false);
+  type ResultType =
+    | { image_url: string } // For "generate_image"
+    | Record<string, string | number | boolean | null | object>;
 
-export default function TravelBlog() {
-  const [blogs, setBlogs] = useState([
-    {
-      id: 1,
-      title: "Barcelona Retreat",
-      description: "Enjoying the city of architecture",
-      location: "Barcelona",
-      date: "01/12/2024, 13:45:00",
-    },
-    {
-      id: 2,
-      title: "Cape Town Adventure",
-      description: "Exploring the city of natural beauty",
-      location: "Cape Town",
-      date: "02/15/2024, 09:30:00",
-    },
-    {
-      id: 3,
-      title: "Tokyo Escapade",
-      description: "Experiencing the blend of tradition and innovation",
-      location: "Tokyo",
-      date: "03/22/2024, 16:20:00",
-    },
-  ]);
+  const [result, setResult] = useState<ResultType | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // const [action, setAction] = useState("generate_image");
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [locationFilter, setLocationFilter] = useState("All locations");
-  const [newBlogTitle, setNewBlogTitle] = useState("");
-  const [newBlogDescription, setNewBlogDescription] = useState("");
-  const [newBlogLocation, setNewBlogLocation] = useState("All locations");
+  // Image generation inputs
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [model, setModel] = useState("DALL-E 3");
+  const [modelStyle, setModelStyle] = useState("default");
+  const [aspectRatio, setAspectRatio] = useState("9:16");
 
-  const locations = [
-    "All locations",
-    "Barcelona",
-    "Cape Town",
-    "Tokyo",
-    "Paris",
-    "New York",
-    "Bali",
-    "Kyoto",
-  ];
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  const filteredBlogs = blogs.filter((blog) => {
-    const matchesSearch =
-      blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      blog.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLocation =
-      locationFilter === "All locations" || blog.location === locationFilter;
-    return matchesSearch && matchesLocation;
-  });
+    setLoading(true);
+    setError(null);
+    setResult(null);
 
-  const handleCreateBlog = () => {
-    if (!newBlogTitle.trim()) return;
+    try {
+      const requestBody = {
+        prompt: imagePrompt,
+        model,
+        model_style: modelStyle,
+        model_aspect_ratio: aspectRatio,
+      };
 
-    const newBlog = {
-      id: Date.now(),
-      title: newBlogTitle,
-      description: newBlogDescription,
-      location: newBlogLocation === "All locations" ? "" : newBlogLocation,
-      date: new Date().toLocaleString(),
-    };
+      const response = await fetch(`/api/agent-ai/generate_image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-    setBlogs([newBlog, ...blogs]);
-    setNewBlogTitle("");
-    setNewBlogDescription("");
-    setNewBlogLocation("All locations");
-  };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Error: ${response.status}`);
+      }
 
-  const handleDeleteBlog = (id) => {
-    setBlogs(blogs.filter((blog) => blog.id !== id));
+      const data = await response.json();
+      setResult(data);
+    } catch (err) {
+      console.error("Error:", err);
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Travel Blog</h1>
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search blogs"
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="md:w-64">
-            <select
-              className="w-full p-2 border border-gray-300 rounded-md bg-white"
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-            >
-              {locations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </header>
+    <div className="container mx-auto px-4 py-8">
+      <Head>
+        <title>Image Generation Demo</title>
+        <meta name="description" content="Generate images with Agent.AI API" />
+      </Head>
 
-      <section className="mb-10">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">
-          Create New Blog
-        </h2>
-        <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
-          <input
-            type="text"
-            placeholder="Blog title"
-            className="w-full p-2 mb-4 border border-gray-300 rounded-md"
-            value={newBlogTitle}
-            onChange={(e) => setNewBlogTitle(e.target.value)}
-          />
+      <h1 className="text-3xl font-bold mb-6">Image Generation API</h1>
+
+      <form onSubmit={handleSubmit} className="mb-8">
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Image Prompt</label>
           <textarea
-            placeholder="Write your travel story..."
-            className="w-full p-2 mb-4 border border-gray-300 rounded-md h-40"
-            value={newBlogDescription}
-            onChange={(e) => setNewBlogDescription(e.target.value)}
-          ></textarea>
-          <div className="flex flex-col md:flex-row gap-4 items-center">
-            <select
-              className="w-full md:w-64 p-2 border border-gray-300 rounded-md bg-white"
-              value={newBlogLocation}
-              onChange={(e) => setNewBlogLocation(e.target.value)}
-            >
-              {locations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleCreateBlog}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Create
-            </button>
-          </div>
+            value={imagePrompt}
+            onChange={(e) => setImagePrompt(e.target.value)}
+            placeholder="A serene mountain lake at sunset"
+            className="w-full p-2 border rounded h-32"
+            required
+          />
         </div>
-      </section>
 
-      <section>
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Blogs</h2>
-        {filteredBlogs.length === 0 ? (
-          <p className="text-gray-500 italic">
-            No blogs found. Create your first travel story!
-          </p>
-        ) : (
-          <div className="space-y-6">
-            {filteredBlogs.map((blog) => (
-              <div key={blog.id} className="border-b border-gray-200 pb-6">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    {blog.title}
-                  </h3>
-                  <span className="text-sm text-gray-500">{blog.date}</span>
-                </div>
-                <p className="text-gray-600 mb-2">{blog.description}</p>
-                <div className="flex justify-between items-center mt-4">
-                  <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                    {blog.location}
-                  </span>
-                  <div className="space-x-2">
-                    <button className="bg-gray-200 text-gray-700 px-4 py-1 rounded-md hover:bg-gray-300 transition-colors">
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteBlog(blog.id)}
-                      className="bg-red-500 text-white px-4 py-1 rounded-md hover:bg-red-600 transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Model</label>
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="w-full p-2 border rounded"
+          >
+            <option value="DALL-E 3">DALL-E 3</option>
+            <option value="Stable Diffusion">Stable Diffusion</option>
+            <option value="Midjourney">Midjourney</option>
+          </select>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Style</label>
+          <select
+            value={modelStyle}
+            onChange={(e) => setModelStyle(e.target.value)}
+            className="w-full p-2 border rounded"
+          >
+            <option value="default">Default</option>
+            <option value="vivid">Vivid</option>
+            <option value="natural">Natural</option>
+          </select>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Aspect Ratio</label>
+          <select
+            value={aspectRatio}
+            onChange={(e) => setAspectRatio(e.target.value)}
+            className="w-full p-2 border rounded"
+          >
+            <option value="9:16">9:16 (Portrait)</option>
+            <option value="1:1">1:1 (Square)</option>
+            <option value="16:9">16:9 (Landscape)</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          {loading ? "Generating Image..." : "Generate Image"}
+        </button>
+      </form>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div className="border rounded p-4">
+          <h2 className="text-xl font-semibold mb-2">Generated Image</h2>
+
+          {result.image_url && (
+            <Image
+              src={typeof result.image_url === "string" ? result.image_url : ""}
+              alt="Generated image"
+              className="max-w-full h-auto rounded"
+              width={500}
+              height={500}
+            />
+          )}
+
+          <pre className="bg-gray-100 p-4 rounded overflow-auto mt-4">
+            {JSON.stringify(result, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }
